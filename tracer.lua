@@ -1,4 +1,4 @@
--- [[ TRACER SYSTEM V22 - CLEAN & PRO EDITION ]] --
+-- [[ ESP - BUGFIX VERSION ]] --
 
 -- Services
 local Players = game:GetService("Players")
@@ -10,9 +10,9 @@ local Camera = workspace.CurrentCamera
 local Config = {
     Thickness_FP = 2.5,
     Thickness_TP = 4.0,
-    WireOp = 0.8,      -- Tracer Opacity
-    HitboxOp = 0.5,    -- Hitbox Opacity
-    ShowHP = true,     -- Default HP ON
+    WireOp = 0.8,
+    HitboxOp = 0.5,
+    ShowHP = true,
     HitboxColor = Color3.new(1, 1, 1)
 }
 
@@ -23,7 +23,7 @@ local VisualCache = {}
 
 -- 2. GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RevenantESP_V22_Clean"
+ScreenGui.Name = "RevenantESP_V22"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -60,7 +60,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 1, 0)
 Title.Position = UDim2.new(0, 30, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "REVENANT TRACER V22"
+Title.Text = "[ESP]"
 Title.TextColor3 = Color3.fromRGB(0, 200, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
@@ -164,11 +164,11 @@ Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 local function ClearPlayerVisuals(playerName)
     if VisualCache[playerName] then
         local v = VisualCache[playerName]
-        if v.Line then v.Line:Destroy() end
-        if v.HealthGui then v.HealthGui:Destroy() end
+        if v.Line then v.Line.Visible = false v.Line:Destroy() end
+        if v.HealthGui then v.HealthGui.Enabled = false v.HealthGui:Destroy() end
         if v.Boxes then
             for _, b in pairs(v.Boxes) do
-                if b then b:Destroy() end
+                if b then b.Visible = false b:Destroy() end
             end
         end
         VisualCache[playerName] = nil
@@ -180,8 +180,8 @@ local function CreateVisuals(player)
     local char = player.Character
     if not char then return end
 
-    local hum = char:WaitForChild("Humanoid", 5)
-    local head = char:WaitForChild("Head", 5)
+    local hum = char:FindFirstChild("Humanoid")
+    local head = char:FindFirstChild("Head")
     if not hum or not head then return end
 
     local elements = {Boxes = {}}
@@ -315,9 +315,14 @@ local function RefreshPlayerList()
                 if TrackedPlayers[player.Name] then
                     TrackedPlayers[player.Name] = nil
                     Checkmark.Visible = false
+                    -- 關鍵修復：取消勾選時立刻清除該玩家的視覺線條與血條
+                    ClearPlayerVisuals(player.Name)
                 else
                     TrackedPlayers[player.Name] = true
                     Checkmark.Visible = true
+                    if player.Character then
+                        CreateVisuals(player)
+                    end
                 end
                 UpdateStatus()
             end)
@@ -343,9 +348,11 @@ local function ToggleAllPlayers(select)
                 if select then
                     TrackedPlayers[player.Name] = true
                     data.Checkmark.Visible = true
+                    if player.Character then CreateVisuals(player) end
                 else
                     TrackedPlayers[player.Name] = nil
                     data.Checkmark.Visible = false
+                    ClearPlayerVisuals(player.Name)
                 end
             end
         end
@@ -417,30 +424,37 @@ AddSettingInput("Hitbox Op", 0.5, function(v) Config.HitboxOp = tonumber(v) or 0
 AddSettingInput("1P Thick", 2.5, function(v) Config.Thickness_FP = tonumber(v) or 2.5 end)
 AddSettingInput("3P Thick", 4.0, function(v) Config.Thickness_TP = tonumber(v) or 4.0 end)
 
--- 5. Render Loop
+-- 5. Render Loop (同時清理未被勾選的快取殘留)
 local RenderConn = RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar then return end
     local head = myChar:FindFirstChild("Head")
     local isFP = head and head.LocalTransparencyModifier > 0.5
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        if not VisualCache[player.Name] and player.Character then
-            CreateVisuals(player)
+    -- 檢查快取中所有玩家，如果沒被勾選就強制清理
+    for playerName, _ in pairs(VisualCache) do
+        if not TrackedPlayers[playerName] then
+            ClearPlayerVisuals(playerName)
         end
+    end
 
-        local cache = VisualCache[player.Name]
-        if cache and player.Character then
-            local tHum = player.Character:FindFirstChild("Humanoid")
-            local tHead = player.Character:FindFirstChild("Head")
-            if tHum and tHead then
-                cache.HealthGui.Enabled = Config.ShowHP
-                cache.HealthLabel.Text = player.Name .. " [" .. math.floor(tHum.Health) .. "]"
-                cache.HealthBar.Size = UDim2.new(math.clamp(tHum.Health / tHum.MaxHealth, 0, 1), 0, 1, 0)
-                cache.HealthBar.BackgroundColor3 = Color3.new(1, 0, 0):Lerp(Color3.new(0, 1, 0), tHum.Health / tHum.MaxHealth)
+    for playerName, _ in pairs(TrackedPlayers) do
+        local player = Players:FindFirstChild(playerName)
+        if player and player ~= LocalPlayer then
+            if not VisualCache[player.Name] and player.Character then
+                CreateVisuals(player)
+            end
 
-                if TrackedPlayers[player.Name] then
+            local cache = VisualCache[player.Name]
+            if cache and player.Character then
+                local tHum = player.Character:FindFirstChild("Humanoid")
+                local tHead = player.Character:FindFirstChild("Head")
+                if tHum and tHead then
+                    cache.HealthGui.Enabled = Config.ShowHP
+                    cache.HealthLabel.Text = player.Name .. " [" .. math.floor(tHum.Health) .. "]"
+                    cache.HealthBar.Size = UDim2.new(math.clamp(tHum.Health / tHum.MaxHealth, 0, 1), 0, 1, 0)
+                    cache.HealthBar.BackgroundColor3 = Color3.new(1, 0, 0):Lerp(Color3.new(0, 1, 0), tHum.Health / tHum.MaxHealth)
+
                     cache.Line.Visible = true
                     local startPos = isFP and (Camera.CFrame * CFrame.new(0, 0, -0.3)).Position or (myChar.PrimaryPart and myChar.PrimaryPart.Position or Vector3.new(0, 0, 0))
                     cache.Line.Thickness = isFP and Config.Thickness_FP or Config.Thickness_TP
@@ -451,13 +465,6 @@ local RenderConn = RunService.RenderStepped:Connect(function()
                         for _, b in pairs(cache.Boxes) do
                             b.Visible = true
                             b.Transparency = 1 - Config.HitboxOp
-                        end
-                    end
-                else
-                    cache.Line.Visible = false
-                    if cache.Boxes then
-                        for _, b in pairs(cache.Boxes) do
-                            b.Visible = false
                         end
                     end
                 end
@@ -491,7 +498,9 @@ local function BindPlayerEvents(p)
     if p == LocalPlayer then return end
     p.CharacterAdded:Connect(function()
         task.wait(1)
-        CreateVisuals(p)
+        if TrackedPlayers[p.Name] then
+            CreateVisuals(p)
+        end
     end)
 end
 
