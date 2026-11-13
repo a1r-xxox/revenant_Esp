@@ -1,4 +1,9 @@
--- [[ ESP - BUGFIX VERSION ]] --
+-- [[ REVENANT-ESP V22 - GLOBAL CLEANUP EDITION ]] --
+
+-- 0. 啟動前防呆：如果之前有未關閉乾淨的舊版實例，強制先徹底清理
+if getgenv().CleanupRevenantESP then
+    pcall(getgenv().CleanupRevenantESP)
+end
 
 -- Services
 local Players = game:GetService("Players")
@@ -30,8 +35,8 @@ ScreenGui.Parent = game:GetService("CoreGui")
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 370)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -185)
+MainFrame.Size = UDim2.new(0, 300, 0, 390)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -195)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -45,25 +50,16 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
 
--- Gear Settings Button (⚙️)
-local SettingsBtn = Instance.new("TextButton")
-SettingsBtn.Size = UDim2.new(0, 30, 0, 30)
-SettingsBtn.Position = UDim2.new(0, 0, 0, 0)
-SettingsBtn.BackgroundTransparency = 1
-SettingsBtn.Text = "⚙️"
-SettingsBtn.TextColor3 = Color3.new(1, 1, 1)
-SettingsBtn.TextSize = 16
-SettingsBtn.Parent = TitleBar
-
 -- Title Label
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.new(0, 30, 0, 0)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "[ESP]"
+Title.Text = "[Revenant-ESP]"
 Title.TextColor3 = Color3.fromRGB(0, 200, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TitleBar
 
 -- Close Button (X)
@@ -93,7 +89,7 @@ StatusLabel.Parent = MainFrame
 -- Player Selection Container
 local SelectionFrame = Instance.new("Frame")
 SelectionFrame.Position = UDim2.new(0, 10, 0, 65)
-SelectionFrame.Size = UDim2.new(1, -20, 0, 250)
+SelectionFrame.Size = UDim2.new(1, -20, 0, 235)
 SelectionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SelectionFrame.BorderSizePixel = 0
 SelectionFrame.Parent = MainFrame
@@ -110,7 +106,7 @@ PlayerScrollFrame.Parent = SelectionFrame
 
 -- Select All / Deselect All Buttons
 local SelectAllButton = Instance.new("TextButton")
-SelectAllButton.Position = UDim2.new(0, 10, 0, 325)
+SelectAllButton.Position = UDim2.new(0, 10, 0, 308)
 SelectAllButton.Size = UDim2.new(0.5, -15, 0, 32)
 SelectAllButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 SelectAllButton.BorderSizePixel = 0
@@ -121,7 +117,7 @@ SelectAllButton.TextSize = 14
 SelectAllButton.Parent = MainFrame
 
 local DeselectAllButton = Instance.new("TextButton")
-DeselectAllButton.Position = UDim2.new(0.5, 5, 0, 325)
+DeselectAllButton.Position = UDim2.new(0.5, 5, 0, 308)
 DeselectAllButton.Size = UDim2.new(0.5, -15, 0, 32)
 DeselectAllButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 DeselectAllButton.BorderSizePixel = 0
@@ -130,6 +126,18 @@ DeselectAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 DeselectAllButton.Font = Enum.Font.SourceSansBold
 DeselectAllButton.TextSize = 14
 DeselectAllButton.Parent = MainFrame
+
+-- Toggle Settings Panel Button
+local ToggleSettingBtn = Instance.new("TextButton")
+ToggleSettingBtn.Position = UDim2.new(0, 10, 0, 348)
+ToggleSettingBtn.Size = UDim2.new(1, -20, 0, 32)
+ToggleSettingBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ToggleSettingBtn.BorderSizePixel = 0
+ToggleSettingBtn.Text = "TOGGLE SETTINGS PANEL"
+ToggleSettingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleSettingBtn.Font = Enum.Font.SourceSansBold
+ToggleSettingBtn.TextSize = 14
+ToggleSettingBtn.Parent = MainFrame
 
 -- Settings Side Panel (Right)
 local SettingsFrame = Instance.new("Frame")
@@ -160,7 +168,7 @@ local Layout = Instance.new("UIListLayout", SetContainer)
 Layout.Padding = UDim.new(0, 6)
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- 3. Visuals & Respawn-Safe Logic
+-- 3. Visuals & Cleanup Logic
 local function ClearPlayerVisuals(playerName)
     if VisualCache[playerName] then
         local v = VisualCache[playerName]
@@ -186,7 +194,6 @@ local function CreateVisuals(player)
 
     local elements = {Boxes = {}}
 
-    -- Hitbox
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             local box = Instance.new("SelectionBox")
@@ -200,8 +207,8 @@ local function CreateVisuals(player)
         end
     end
 
-    -- Wire (Tracer)
     local line = Instance.new("LineHandleAdornment")
+    line.Name = "RevenantTracerLine" -- 加上專屬名稱方便辨識清理
     line.AlwaysOnTop = true
     line.Color3 = Color3.new(1, 1, 1)
     line.Adornee = workspace.Terrain
@@ -209,7 +216,6 @@ local function CreateVisuals(player)
     line.Visible = false
     elements.Line = line
 
-    -- HP Billboard
     local bgui = Instance.new("BillboardGui")
     bgui.Size = UDim2.new(0, 200, 0, 50)
     bgui.Adornee = head
@@ -315,7 +321,6 @@ local function RefreshPlayerList()
                 if TrackedPlayers[player.Name] then
                     TrackedPlayers[player.Name] = nil
                     Checkmark.Visible = false
-                    -- 關鍵修復：取消勾選時立刻清除該玩家的視覺線條與血條
                     ClearPlayerVisuals(player.Name)
                 else
                     TrackedPlayers[player.Name] = true
@@ -424,14 +429,13 @@ AddSettingInput("Hitbox Op", 0.5, function(v) Config.HitboxOp = tonumber(v) or 0
 AddSettingInput("1P Thick", 2.5, function(v) Config.Thickness_FP = tonumber(v) or 2.5 end)
 AddSettingInput("3P Thick", 4.0, function(v) Config.Thickness_TP = tonumber(v) or 4.0 end)
 
--- 5. Render Loop (同時清理未被勾選的快取殘留)
+-- 5. Render Loop
 local RenderConn = RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar then return end
     local head = myChar:FindFirstChild("Head")
     local isFP = head and head.LocalTransparencyModifier > 0.5
 
-    -- 檢查快取中所有玩家，如果沒被勾選就強制清理
     for playerName, _ in pairs(VisualCache) do
         if not TrackedPlayers[playerName] then
             ClearPlayerVisuals(playerName)
@@ -449,7 +453,8 @@ local RenderConn = RunService.RenderStepped:Connect(function()
             if cache and player.Character then
                 local tHum = player.Character:FindFirstChild("Humanoid")
                 local tHead = player.Character:FindFirstChild("Head")
-                if tHum and tHead then
+                
+                if tHum and tHead and tHum.Health > 0 then
                     cache.HealthGui.Enabled = Config.ShowHP
                     cache.HealthLabel.Text = player.Name .. " [" .. math.floor(tHum.Health) .. "]"
                     cache.HealthBar.Size = UDim2.new(math.clamp(tHum.Health / tHum.MaxHealth, 0, 1), 0, 1, 0)
@@ -467,14 +472,56 @@ local RenderConn = RunService.RenderStepped:Connect(function()
                             b.Transparency = 1 - Config.HitboxOp
                         end
                     end
+                else
+                    if cache.Line then cache.Line.Visible = false end
+                    if cache.Boxes then
+                        for _, b in pairs(cache.Boxes) do b.Visible = false end
+                    end
+                    if cache.HealthGui then cache.HealthGui.Enabled = false end
                 end
             end
         end
     end
 end)
 
--- 6. Event Connections & Cleanup
-SettingsBtn.MouseButton1Click:Connect(function()
+-- 6. Event Connections & Global Cleanup Function
+local Connections = {}
+
+local function FullCleanup()
+    -- 1. 斷開渲染迴圈
+    if RenderConn then 
+        RenderConn:Disconnect() 
+        RenderConn = nil
+    end
+    -- 2. 斷開所有玩家事件監聽
+    for _, conn in pairs(Connections) do
+        if conn then conn:Disconnect() end
+    end
+    Connections = {}
+    
+    -- 3. 清除所有目標的線條、方框、血條
+    TrackedPlayers = {}
+    for name, _ in pairs(VisualCache) do
+        ClearPlayerVisuals(name)
+    end
+    -- 雙重保險：掃描 Terrain 清除任何殘留的線條
+    for _, obj in pairs(workspace.Terrain:GetChildren()) do
+        if obj.Name == "RevenantTracerLine" then
+            obj:Destroy()
+        end
+    end
+    
+    -- 4. 銷毀 UI 視窗
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+    getgenv().CleanupRevenantESP = nil
+end
+
+-- 將清理函式註冊到全域環境，供外部 UI 庫呼叫
+getgenv().CleanupRevenantESP = FullCleanup
+
+ToggleSettingBtn.MouseButton1Click:Connect(function()
     SettingsFrame.Visible = not SettingsFrame.Visible
 end)
 
@@ -486,38 +533,33 @@ DeselectAllButton.MouseButton1Click:Connect(function()
     ToggleAllPlayers(false)
 end)
 
-CloseButton.MouseButton1Click:Connect(function()
-    if RenderConn then RenderConn:Disconnect() end
-    for name, _ in pairs(VisualCache) do
-        ClearPlayerVisuals(name)
-    end
-    ScreenGui:Destroy()
-end)
+CloseButton.MouseButton1Click:Connect(FullCleanup)
 
 local function BindPlayerEvents(p)
     if p == LocalPlayer then return end
-    p.CharacterAdded:Connect(function()
+    local c = p.CharacterAdded:Connect(function()
         task.wait(1)
         if TrackedPlayers[p.Name] then
             CreateVisuals(p)
         end
     end)
+    table.insert(Connections, c)
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
     BindPlayerEvents(p)
 end
 
-Players.PlayerAdded:Connect(function(p)
+table.insert(Connections, Players.PlayerAdded:Connect(function(p)
     BindPlayerEvents(p)
     RefreshPlayerList()
-end)
+end))
 
-Players.PlayerRemoving:Connect(function(p)
+table.insert(Connections, Players.PlayerRemoving:Connect(function(p)
     TrackedPlayers[p.Name] = nil
     ClearPlayerVisuals(p.Name)
     RefreshPlayerList()
-end)
+end))
 
 -- Initialize
 RefreshPlayerList()
